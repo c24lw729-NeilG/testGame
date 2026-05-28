@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>乘法公式翻牌挑戰</title>
+    <title>乘法公式翻牌挑戰 (2分鐘極速版)</title>
     <style>
         body {
             font-family: 'Microsoft JhengHei', sans-serif;
@@ -20,9 +20,11 @@
         .header {
             text-align: center;
             margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
         }
 
-        .score-board {
+        .info-board {
             font-size: 24px;
             font-weight: bold;
             color: #333;
@@ -32,10 +34,14 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
+        .time-alert {
+            color: #e74c3c;
+        }
+
         /* 卡牌區塊 */
         .card-container {
-            width: 300px;
-            height: 200px;
+            width: 320px;
+            height: 220px;
             perspective: 1000px;
             margin-bottom: 30px;
             cursor: pointer;
@@ -64,14 +70,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
+            font-size: 36px;
             border-radius: 15px;
             font-weight: bold;
         }
 
-        /* ==========================================
-           可以在這裡更換卡牌背面的顏色或背景圖！
-           ========================================== */
         .card-back {
             background: linear-gradient(135deg, #6e8efb, #a777e3);
             color: white;
@@ -80,7 +83,7 @@
 
         .card-back::after {
             content: '點擊翻牌';
-            font-size: 20px;
+            font-size: 22px;
             letter-spacing: 2px;
         }
 
@@ -88,18 +91,18 @@
             background: #ffffff;
             color: #2c3e50;
             transform: rotateY(180deg);
-            border: 2px solid #a777e3;
+            border: 3px solid #a777e3;
         }
 
-        /* 計時器 */
+        /* 單題計時器 */
         .timer-container {
-            width: 300px;
+            width: 320px;
             height: 15px;
             background: #e0e0e0;
             border-radius: 10px;
             margin-bottom: 20px;
             overflow: hidden;
-            visibility: hidden; /* 預設隱藏，翻牌後顯示 */
+            visibility: hidden;
         }
 
         .timer-bar {
@@ -113,11 +116,11 @@
         .options-container {
             display: flex;
             gap: 15px;
-            visibility: hidden; /* 預設隱藏 */
+            visibility: hidden;
         }
 
         .option-btn {
-            font-size: 18px;
+            font-size: 20px;
             padding: 15px 25px;
             border: none;
             border-radius: 10px;
@@ -127,7 +130,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.2s;
             font-weight: bold;
-            min-width: 120px;
+            min-width: 140px;
         }
 
         .option-btn:hover {
@@ -146,7 +149,7 @@
         .message {
             height: 30px;
             margin-top: 15px;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             color: #333;
         }
@@ -157,12 +160,48 @@
             font-size: 14px;
             color: #7f8c8d;
         }
+
+        /* 遊戲覆蓋畫面 (開始與結束) */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .overlay h1 { font-size: 48px; margin-bottom: 20px; }
+        .overlay p { font-size: 24px; margin-bottom: 40px; }
+        .start-btn {
+            font-size: 28px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            background: #2ed573;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.4);
+            transition: 0.3s;
+        }
+        .start-btn:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
 
+    <div class="overlay" id="overlay">
+        <h1 id="overlayTitle">乘法公式極速挑戰</h1>
+        <p id="overlayDesc">總時間 2 分鐘，每題限時 3 秒！</p>
+        <button class="start-btn" onclick="startGame()" id="overlayBtn">開始遊戲</button>
+    </div>
+
     <div class="header">
-        <div class="score-board">分數：<span id="score">0</span></div>
+        <div class="info-board">總時間：<span id="totalTimeDisplay">02:00</span></div>
+        <div class="info-board">分數：<span id="score">0</span></div>
     </div>
 
     <div class="card-container" id="cardContainer" onclick="flipCard()">
@@ -187,24 +226,46 @@
     <div class="footer">本遊戲由阿緯老師設計</div>
 
     <script>
-        // 題庫設定 (可以自行擴增)
-        const questions = [
-            { q: "(a+b)²", ans: "a² + 2ab + b²", wrong: ["a² + b²", "a² - 2ab + b²"] },
-            { q: "(a-b)²", ans: "a² - 2ab + b²", wrong: ["a² + 2ab + b²", "a² - b²"] },
-            { q: "(a+b)(a-b)", ans: "a² - b²", wrong: ["a² + 2ab + b²", "a² - 2ab + b²"] },
-            { q: "a² - b²", ans: "(a+b)(a-b)", wrong: ["(a-b)²", "(a+b)²"] },
-            { q: "(2a+b)²", ans: "4a² + 4ab + b²", wrong: ["4a² + b²", "2a² + 2ab + b²"] },
-            { q: "a² - 2ab + b²", ans: "(a-b)²", wrong: ["(a+b)²", "(a+b)(a-b)"] },
-            { q: "(-a-b)²", ans: "a² + 2ab + b²", wrong: ["-a² - 2ab - b²", "a² - 2ab + b²"] }
-        ];
+        // --- 題庫自動生成器 (產生超過 100 題的變化) ---
+        let questions = [];
+        
+        // 類型 1: (x ± a)² 與 (x+a)(x-a) ，a 從 1 到 15 (共 45 題)
+        for(let i = 1; i <= 15; i++) {
+            let i_sq = i * i;
+            let i_2 = 2 * i;
+            questions.push({ q: `(x + ${i})²`, ans: `x² + ${i_2}x + ${i_sq}`, wrong: [`x² + ${i_sq}`, `x² - ${i_2}x + ${i_sq}`] });
+            questions.push({ q: `(x - ${i})²`, ans: `x² - ${i_2}x + ${i_sq}`, wrong: [`x² + ${i_2}x + ${i_sq}`, `x² - ${i_sq}`] });
+            questions.push({ q: `(x + ${i})(x - ${i})`, ans: `x² - ${i_sq}`, wrong: [`x² - ${i_2}x + ${i_sq}`, `x² + ${i_sq}`] });
+        }
 
+        // 類型 2: 帶係數的 (ax ± b)² 與 (ax+b)(ax-b)，a從2~5，b從1~5 (共 60 題)
+        for(let a = 2; a <= 5; a++) {
+            for(let b = 1; b <= 5; b++) {
+                let a_sq = a * a;
+                let b_sq = b * b;
+                let ab2 = 2 * a * b;
+                questions.push({ q: `(${a}x + ${b})²`, ans: `${a_sq}x² + ${ab2}x + ${b_sq}`, wrong: [`${a_sq}x² + ${b_sq}`, `${a_sq}x² - ${ab2}x + ${b_sq}`] });
+                questions.push({ q: `(${a}x - ${b})²`, ans: `${a_sq}x² - ${ab2}x + ${b_sq}`, wrong: [`${a_sq}x² + ${ab2}x + ${b_sq}`, `${a_sq}x² - ${b_sq}`] });
+                questions.push({ q: `(${a}x + ${b})(${a}x - ${b})`, ans: `${a_sq}x² - ${b_sq}`, wrong: [`${a_sq}x² - ${ab2}x + ${b_sq}`, `${a_sq}x² + ${b_sq}`] });
+            }
+        }
+        // 目前題庫總數：105 題
+
+        // --- 遊戲邏輯變數 ---
         let score = 0;
         let currentQuestion = null;
         let isFlipped = false;
-        let timerInterval;
-        let timeLeft = 3000; // 3秒 = 3000毫秒
+        let gameActive = false;
+        
+        // 計時器相關變數
+        let totalTimeLeft = 120; // 總時間 120 秒 (2分鐘)
+        let totalTimeInterval;
+        
+        let questionTimerInterval;
+        let questionTimeLeft = 3000; // 單題作答時間 3000 毫秒 (3秒)
         let correctOptionIndex = -1;
 
+        // DOM 元素
         const card = document.getElementById('card');
         const questionText = document.getElementById('questionText');
         const timerContainer = document.getElementById('timerContainer');
@@ -212,14 +273,74 @@
         const optionsContainer = document.getElementById('optionsContainer');
         const scoreElement = document.getElementById('score');
         const messageText = document.getElementById('messageText');
+        const totalTimeDisplay = document.getElementById('totalTimeDisplay');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayDesc = document.getElementById('overlayDesc');
+        const overlayBtn = document.getElementById('overlayBtn');
         const buttons = [
             document.getElementById('btnA'),
             document.getElementById('btnB'),
             document.getElementById('btnC')
         ];
 
+        // 啟動總遊戲
+        function startGame() {
+            score = 0;
+            totalTimeLeft = 120;
+            updateScore();
+            updateTotalTimeDisplay();
+            overlay.style.display = "none";
+            gameActive = true;
+
+            // 啟動總計時器
+            totalTimeInterval = setInterval(() => {
+                totalTimeLeft--;
+                updateTotalTimeDisplay();
+
+                if (totalTimeLeft <= 10) {
+                    totalTimeDisplay.parentElement.classList.add('time-alert'); // 最後10秒變紅字
+                }
+
+                if (totalTimeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // 結束遊戲
+        function endGame() {
+            clearInterval(totalTimeInterval);
+            clearInterval(questionTimerInterval);
+            gameActive = false;
+            
+            // 恢復畫面初始狀態
+            card.classList.remove('flipped');
+            optionsContainer.style.visibility = "hidden";
+            timerContainer.style.visibility = "hidden";
+            messageText.innerText = "";
+            isFlipped = false;
+            totalTimeDisplay.parentElement.classList.remove('time-alert');
+
+            // 顯示結算畫面
+            overlayTitle.innerText = "時間到！";
+            overlayDesc.innerText = `你的最終得分是：${score} 分`;
+            overlayBtn.innerText = "再玩一次";
+            overlay.style.display = "flex";
+        }
+
+        // 更新總時間顯示 (MM:SS)
+        function updateTotalTimeDisplay() {
+            let minutes = Math.floor(totalTimeLeft / 60);
+            let seconds = totalTimeLeft % 60;
+            totalTimeDisplay.innerText = 
+                (minutes < 10 ? "0" : "") + minutes + ":" + 
+                (seconds < 10 ? "0" : "") + seconds;
+        }
+
+        // 翻牌邏輯
         function flipCard() {
-            if (isFlipped) return; // 如果已經翻開，就不做反應
+            if (isFlipped || !gameActive) return; 
             
             isFlipped = true;
             messageText.innerText = "";
@@ -236,53 +357,52 @@
             const labels = ["A. ", "B. ", "C. "];
             for (let i = 0; i < 3; i++) {
                 buttons[i].innerText = labels[i] + options[i];
-                buttons[i].className = "option-btn"; // 重置樣式
+                buttons[i].className = "option-btn"; 
                 buttons[i].disabled = false;
             }
 
-            // 翻牌動畫
             card.classList.add('flipped');
 
-            // 顯示選項與計時器 (稍微延遲讓翻牌動畫先跑)
+            // 延遲顯示選項與單題計時器
             setTimeout(() => {
+                if(!gameActive) return; // 防止在動畫期間遊戲結束
                 optionsContainer.style.visibility = "visible";
                 timerContainer.style.visibility = "visible";
-                startTimer();
+                startQuestionTimer();
             }, 300);
         }
 
-        function startTimer() {
-            timeLeft = 5000;
+        // 單題 3 秒計時器
+        function startQuestionTimer() {
+            questionTimeLeft = 3000;
             timerBar.style.width = "100%";
             timerBar.style.backgroundColor = "#ff4757";
 
-            timerInterval = setInterval(() => {
-                timeLeft -= 50; // 每50毫秒更新一次進度條
-                let percentage = (timeLeft / 5000) * 100;
+            questionTimerInterval = setInterval(() => {
+                questionTimeLeft -= 50; 
+                let percentage = (questionTimeLeft / 3000) * 100;
                 timerBar.style.width = percentage + "%";
 
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
+                if (questionTimeLeft <= 0) {
+                    clearInterval(questionTimerInterval);
                     handleTimeout();
                 }
             }, 50);
         }
 
         function checkAnswer(selectedIndex) {
-            clearInterval(timerInterval); // 停止計時
+            clearInterval(questionTimerInterval);
             disableButtons();
 
             if (selectedIndex === correctOptionIndex) {
-                // 答對
                 score += 5;
                 buttons[selectedIndex].classList.add("correct");
                 messageText.innerText = "答對了！ +5分";
                 messageText.style.color = "#2ed573";
             } else {
-                // 答錯
                 score -= 3;
                 buttons[selectedIndex].classList.add("wrong");
-                buttons[correctOptionIndex].classList.add("correct"); // 提示正確答案
+                buttons[correctOptionIndex].classList.add("correct");
                 messageText.innerText = "答錯了！ -3分";
                 messageText.style.color = "#ff4757";
             }
@@ -294,7 +414,7 @@
         function handleTimeout() {
             disableButtons();
             score -= 2;
-            buttons[correctOptionIndex].classList.add("correct"); // 時間到也提示正確答案
+            buttons[correctOptionIndex].classList.add("correct");
             messageText.innerText = "時間到！ -2分";
             messageText.style.color = "#f39c12";
             updateScore();
@@ -310,17 +430,17 @@
         }
 
         function scheduleReset() {
-            // 等待 1.5 秒後翻轉回背面
             setTimeout(() => {
+                if(!gameActive) return; // 如果在重置期間遊戲結束，就不執行
                 card.classList.remove('flipped');
                 optionsContainer.style.visibility = "hidden";
                 timerContainer.style.visibility = "hidden";
                 messageText.innerText = "";
                 isFlipped = false;
-            }, 1500);
+            }, 1200); // 配合節奏變快，重置時間縮短為 1.2 秒
         }
 
-        // 陣列洗牌函數 (Fisher-Yates)
+        // 陣列洗牌函數
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
