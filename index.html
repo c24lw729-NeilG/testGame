@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空城計 - 心理戰互動遊戲</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background-color: #f4ece1;
+            color: #2c2c2c;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        h1 {
+            text-align: center;
+            color: #3a5352;
+            border-bottom: 2px solid #3a5352;
+            padding-bottom: 10px;
+        }
+        #stats-panel {
+            display: flex;
+            justify-content: space-around;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #5b7b7a;
+        }
+        /* 新增：圖片容器樣式 */
+        #image-container {
+            width: 100%;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #scene-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            display: none; /* 預設隱藏，有圖片時才顯示 */
+        }
+        #story-box {
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            min-height: 150px;
+            margin-bottom: 20px;
+            font-size: 1.15em;
+            white-space: pre-line;
+        }
+        .choice-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            background-color: #5b7b7a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.05em;
+            cursor: pointer;
+            transition: background 0.2s ease-in-out, transform 0.1s;
+        }
+        .choice-btn:hover {
+            background-color: #3a5352;
+            transform: translateY(-2px);
+        }
+        .choice-btn:active {
+            transform: translateY(0);
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.95em;
+            color: #777;
+            border-top: 1px dashed #ccc;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>空城計</h1>
+
+    <div id="stats-panel">
+        <div>智謀：<span id="stat-wisdom">50</span></div>
+        <div>司馬懿疑心：<span id="stat-suspicion">50</span></div>
+    </div>
+
+    <!-- 新增：場景圖片區塊 -->
+    <div id="image-container">
+        <img id="scene-image" src="" alt="場景圖片">
+    </div>
+
+    <div id="story-box">
+        遊戲載入中...
+    </div>
+
+    <div id="choices-box"></div>
+
+    <footer>
+        <p>本遊戲由阿緯老師設計</p>
+    </footer>
+
+    <script>
+        let stats = {
+            wisdom: 50,
+            suspicion: 50
+        };
+
+        // 在每個場景加入 image 屬性，目前使用線上產生器產生預設圖片
+        const storyData = {
+            "start": {
+                image: "chicken.jpg",
+                text: "【序章：兵臨城下】\n街亭已失！司馬懿帶領著十五萬大軍，正朝西城浩浩蕩蕩殺來。此時你（諸葛亮）身邊沒有大將，只有一群文官，加上兩千五百名老弱殘兵。眾官聽聞消息，皆大驚失色。\n\n身為主帥，你的第一道軍令是？",
+                choices: [
+                    { text: "趕緊收拾糧草，帶領大家棄城逃跑！", nextScene: "game_over_run", effect: { wisdom: -20, suspicion: 0 } },
+                    { text: "傳令下去：將旌旗全部隱藏起來，全軍肅靜！", nextScene: "hide_flags", effect: { wisdom: 10, suspicion: 10 } }
+                ]
+            },
+            "game_over_run": {
+                image: "https://fakeimg.pl/600x300/8b0000/ffffff?text=兵敗如山倒&font=noto",
+                text: "【結局：兵敗如山倒】\n兩千五百名步兵怎麼跑得過司馬懿的十五萬精銳騎兵？逃出城沒多遠，蜀軍就被魏軍追上，全軍覆沒。你改變了歷史，蜀漢提早滅亡。\n\n（課本云：若棄城而走，必不能遠遁。得不償失啊！）",
+                choices: [ { text: "重新開始，身為主帥不能退縮！", nextScene: "start", effect: { reset: true } } ]
+            },
+            "hide_flags": {
+                image: "https://fakeimg.pl/600x300/3a5352/ffffff?text=佈置疑陣&font=noto",
+                text: "【第一幕：佈置疑陣】\n你下令「匿旌旗，息鼓角」，並嚴禁士兵大聲喧嘩，違令者斬。城內頓時鴉雀無聲，軍紀肅然。接下來，你要如何處置西城的四個城門？",
+                choices: [
+                    { text: "緊閉城門，準備滾木礌石死守！", nextScene: "game_over_defend", effect: { wisdom: -10, suspicion: -20 } },
+                    { text: "將四個城門全部大開，並派士兵扮作百姓灑掃街道。", nextScene: "open_gates", effect: { wisdom: 20, suspicion: 30 } }
+                ]
+            },
+            "game_over_defend": {
+                image: "https://fakeimg.pl/600x300/8b0000/ffffff?text=螳臂當車&font=noto",
+                text: "【結局：螳臂當車】\n司馬懿見城門緊閉，大笑：「城內必定兵力空虛！」隨即下令攻城。兩千五百人根本抵擋不住十五萬大軍，西城瞬間被攻破。\n\n（提示：以卵擊石非智者所為，退回上一步思考其他策略吧！）",
+                choices: [ { text: "重新開始", nextScene: "start", effect: { reset: true } } ]
+            },
+            "open_gates": {
+                image: "https://fakeimg.pl/600x300/3a5352/ffffff?text=敵軍逼近&font=noto",
+                text: "【第二幕：敵軍逼近】\n城門大開，灑掃街道的士兵面對敵軍前哨，皆低頭掃地，旁若無人。此時魏軍前軍已經來到城下，見此詭異情景，皆不敢輕舉妄動，急忙回報司馬懿。此時的你，該在哪裡現身？",
+                choices: [
+                    { text: "穿上戰甲，在城樓上拿弓箭瞄準敵軍，大聲叫陣！", nextScene: "game_over_taunt", effect: { wisdom: -30, suspicion: -40 } },
+                    { text: "披鶴氅，戴綸巾，帶兩個小童上城樓焚香操琴。", nextScene: "play_music", effect: { wisdom: 20, suspicion: 40 } }
+                ]
+            },
+            "game_over_taunt": {
+                image: "https://fakeimg.pl/600x300/8b0000/ffffff?text=弄巧成拙&font=noto",
+                text: "【結局：弄巧成拙】\n司馬懿在遠處一看，見你虛張聲勢卻兵力單薄，冷笑道：「諸葛村夫，計止於此！」萬箭齊發，你無奈倒在城樓上。\n\n（提示：諸葛亮平生謹慎，不會做這種輕佻之舉。）",
+                choices: [ { text: "重新開始", nextScene: "start", effect: { reset: true } } ]
+            },
+            "play_music": {
+                image: "https://fakeimg.pl/600x300/3a5352/ffffff?text=心理交鋒&font=noto",
+                text: "【第三幕：心理交鋒】\n你端坐城樓，笑容可掬，焚香操琴。司馬懿騎在馬上，定睛看著你。此時司馬昭進言：「莫非諸葛亮無軍，故作此態？父親何不進兵？」你的琴聲此刻該如何表現？",
+                choices: [
+                    { text: "心中一慌，琴聲微微顫抖，額頭冒出冷汗。", nextScene: "game_over_panic", effect: { suspicion: -50 } },
+                    { text: "神色自若，琴聲平穩悠揚，彷彿在歡迎老友。", nextScene: "victory", effect: { suspicion: 30 } }
+                ]
+            },
+            "game_over_panic": {
+                image: "https://fakeimg.pl/600x300/8b0000/ffffff?text=功虧一簣&font=noto",
+                text: "【結局：功虧一簣】\n司馬懿精通音律，聽出你琴聲中的恐懼與慌亂，大悟：「琴聲散亂，其心必怯！全軍突擊！」空城計被識破，西城淪陷。",
+                choices: [ { text: "重新開始", nextScene: "start", effect: { reset: true } } ]
+            },
+            "victory": {
+                image: "https://fakeimg.pl/600x300/c5a059/ffffff?text=化險為夷&font=noto",
+                text: "【結局：化險為夷】\n司馬懿聽著平穩的琴聲，眉頭深鎖，說道：「亮平生謹慎，不曾弄險。今大開城門，必有埋伏。我兵若進，中其計也。」隨即下令後軍作前軍，前軍作後軍，往北山小路退兵。\n\n恭喜你！成功利用心理戰化解了西城之危！",
+                choices: [ { text: "再玩一次，重溫三國經典", nextScene: "start", effect: { reset: true } } ]
+            }
+        };
+
+        function updateStats(effect) {
+            if (effect.reset) {
+                stats.wisdom = 50;
+                stats.suspicion = 50;
+            } else {
+                if (effect.wisdom) stats.wisdom += effect.wisdom;
+                if (effect.suspicion) stats.suspicion += effect.suspicion;
+            }
+            stats.wisdom = Math.max(0, Math.min(100, stats.wisdom));
+            stats.suspicion = Math.max(0, Math.min(100, stats.suspicion));
+            document.getElementById('stat-wisdom').innerText = stats.wisdom;
+            document.getElementById('stat-suspicion').innerText = stats.suspicion;
+        }
+
+        function renderScene(sceneKey) {
+            const scene = storyData[sceneKey];
+            
+            // 處理圖片顯示
+            const imgEl = document.getElementById('scene-image');
+            if (scene.image) {
+                imgEl.src = scene.image;
+                imgEl.style.display = 'inline-block';
+            } else {
+                imgEl.style.display = 'none';
+            }
+
+            document.getElementById('story-box').innerText = scene.text;
+            
+            const choicesBox = document.getElementById('choices-box');
+            choicesBox.innerHTML = ''; 
+            
+            scene.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerText = choice.text;
+                btn.onclick = () => {
+                    if (choice.effect) updateStats(choice.effect);
+                    renderScene(choice.nextScene);
+                };
+                choicesBox.appendChild(btn);
+            });
+        }
+
+        renderScene('start');
+    </script>
+</body>
+</html>
