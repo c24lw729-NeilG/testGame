@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乘法公式翻牌挑戰</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .score-board {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            background: #fff;
+            padding: 10px 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 卡牌區塊 */
+        .card-container {
+            width: 300px;
+            height: 200px;
+            perspective: 1000px;
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 15px;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+            cursor: default;
+        }
+
+        .card-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        /* ==========================================
+           可以在這裡更換卡牌背面的顏色或背景圖！
+           ========================================== */
+        .card-back {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            font-size: 24px;
+        }
+
+        .card-back::after {
+            content: '點擊翻牌';
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+
+        .card-front {
+            background: #ffffff;
+            color: #2c3e50;
+            transform: rotateY(180deg);
+            border: 2px solid #a777e3;
+        }
+
+        /* 計時器 */
+        .timer-container {
+            width: 300px;
+            height: 15px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            visibility: hidden; /* 預設隱藏，翻牌後顯示 */
+        }
+
+        .timer-bar {
+            height: 100%;
+            width: 100%;
+            background: #ff4757;
+            transition: width 0.1s linear;
+        }
+
+        /* 選項按鈕區 */
+        .options-container {
+            display: flex;
+            gap: 15px;
+            visibility: hidden; /* 預設隱藏 */
+        }
+
+        .option-btn {
+            font-size: 18px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            background-color: #ffffff;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .option-btn:hover {
+            background-color: #f1f2f6;
+            transform: translateY(-2px);
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .correct { background-color: #2ed573 !important; color: white !important; }
+        .wrong { background-color: #ff4757 !important; color: white !important; }
+
+        .message {
+            height: 30px;
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="score-board">分數：<span id="score">0</span></div>
+    </div>
+
+    <div class="card-container" id="cardContainer" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-face card-back"></div>
+            <div class="card-face card-front" id="questionText"></div>
+        </div>
+    </div>
+
+    <div class="timer-container" id="timerContainer">
+        <div class="timer-bar" id="timerBar"></div>
+    </div>
+
+    <div class="options-container" id="optionsContainer">
+        <button class="option-btn" id="btnA" onclick="checkAnswer(0)"></button>
+        <button class="option-btn" id="btnB" onclick="checkAnswer(1)"></button>
+        <button class="option-btn" id="btnC" onclick="checkAnswer(2)"></button>
+    </div>
+
+    <div class="message" id="messageText"></div>
+
+    <div class="footer">本遊戲由阿緯老師設計</div>
+
+    <script>
+        // 題庫設定 (可以自行擴增)
+        const questions = [
+            { q: "(a+b)²", ans: "a² + 2ab + b²", wrong: ["a² + b²", "a² - 2ab + b²"] },
+            { q: "(a-b)²", ans: "a² - 2ab + b²", wrong: ["a² + 2ab + b²", "a² - b²"] },
+            { q: "(a+b)(a-b)", ans: "a² - b²", wrong: ["a² + 2ab + b²", "a² - 2ab + b²"] },
+            { q: "a² - b²", ans: "(a+b)(a-b)", wrong: ["(a-b)²", "(a+b)²"] },
+            { q: "(2a+b)²", ans: "4a² + 4ab + b²", wrong: ["4a² + b²", "2a² + 2ab + b²"] },
+            { q: "a² - 2ab + b²", ans: "(a-b)²", wrong: ["(a+b)²", "(a+b)(a-b)"] },
+            { q: "(-a-b)²", ans: "a² + 2ab + b²", wrong: ["-a² - 2ab - b²", "a² - 2ab + b²"] }
+        ];
+
+        let score = 0;
+        let currentQuestion = null;
+        let isFlipped = false;
+        let timerInterval;
+        let timeLeft = 5000; // 5秒 = 5000毫秒
+        let correctOptionIndex = -1;
+
+        const card = document.getElementById('card');
+        const questionText = document.getElementById('questionText');
+        const timerContainer = document.getElementById('timerContainer');
+        const timerBar = document.getElementById('timerBar');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const scoreElement = document.getElementById('score');
+        const messageText = document.getElementById('messageText');
+        const buttons = [
+            document.getElementById('btnA'),
+            document.getElementById('btnB'),
+            document.getElementById('btnC')
+        ];
+
+        function flipCard() {
+            if (isFlipped) return; // 如果已經翻開，就不做反應
+            
+            isFlipped = true;
+            messageText.innerText = "";
+            
+            // 隨機抽一題
+            currentQuestion = questions[Math.floor(Math.random() * questions.length)];
+            questionText.innerText = currentQuestion.q;
+
+            // 準備選項並打亂
+            let options = [currentQuestion.ans, currentQuestion.wrong[0], currentQuestion.wrong[1]];
+            options = shuffleArray(options);
+            correctOptionIndex = options.indexOf(currentQuestion.ans);
+
+            const labels = ["A. ", "B. ", "C. "];
+            for (let i = 0; i < 3; i++) {
+                buttons[i].innerText = labels[i] + options[i];
+                buttons[i].className = "option-btn"; // 重置樣式
+                buttons[i].disabled = false;
+            }
+
+            // 翻牌動畫
+            card.classList.add('flipped');
+
+            // 顯示選項與計時器 (稍微延遲讓翻牌動畫先跑)
+            setTimeout(() => {
+                optionsContainer.style.visibility = "visible";
+                timerContainer.style.visibility = "visible";
+                startTimer();
+            }, 300);
+        }
+
+        function startTimer() {
+            timeLeft = 5000;
+            timerBar.style.width = "100%";
+            timerBar.style.backgroundColor = "#ff4757";
+
+            timerInterval = setInterval(() => {
+                timeLeft -= 50; // 每50毫秒更新一次進度條
+                let percentage = (timeLeft / 5000) * 100;
+                timerBar.style.width = percentage + "%";
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 50);
+        }
+
+        function checkAnswer(selectedIndex) {
+            clearInterval(timerInterval); // 停止計時
+            disableButtons();
+
+            if (selectedIndex === correctOptionIndex) {
+                // 答對
+                score += 5;
+                buttons[selectedIndex].classList.add("correct");
+                messageText.innerText = "答對了！ +5分";
+                messageText.style.color = "#2ed573";
+            } else {
+                // 答錯
+                score -= 3;
+                buttons[selectedIndex].classList.add("wrong");
+                buttons[correctOptionIndex].classList.add("correct"); // 提示正確答案
+                messageText.innerText = "答錯了！ -3分";
+                messageText.style.color = "#ff4757";
+            }
+            
+            updateScore();
+            scheduleReset();
+        }
+
+        function handleTimeout() {
+            disableButtons();
+            score -= 2;
+            buttons[correctOptionIndex].classList.add("correct"); // 時間到也提示正確答案
+            messageText.innerText = "時間到！ -2分";
+            messageText.style.color = "#f39c12";
+            updateScore();
+            scheduleReset();
+        }
+
+        function disableButtons() {
+            buttons.forEach(btn => btn.disabled = true);
+        }
+
+        function updateScore() {
+            scoreElement.innerText = score;
+        }
+
+        function scheduleReset() {
+            // 等待 1.5 秒後翻轉回背面
+            setTimeout(() => {
+                card.classList.remove('flipped');
+                optionsContainer.style.visibility = "hidden";
+                timerContainer.style.visibility = "hidden";
+                messageText.innerText = "";
+                isFlipped = false;
+            }, 1500);
+        }
+
+        // 陣列洗牌函數 (Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+    </script>
+</body>
+</html>
